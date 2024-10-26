@@ -1,12 +1,13 @@
 import os
 import sys
-import numpy as np
-import torch
 import inspect
 import json
 import copy
 import argparse
 import random
+
+import numpy as np
+import torch
 import wandb
 
 import config
@@ -25,9 +26,8 @@ def get_args():
     return config.parse_args_with_format(format=args.config_format, base_parser=parser, args=rem_args, namespace=args)
 
 
-def main(args): 
-
-    torch.backends.cuda.matmul.allow_tf32 = True # allows us to make sure we're able to use tensorfloat32 during training
+def main(args):
+    torch.backends.cuda.matmul.allow_tf32 = True  # allows us to make sure we're able to use tensorfloat32 during training
     torch.backends.cudnn.allow_tf32 = True
 
     distributed_backend = distributed.make_backend_from_args(args)
@@ -51,8 +51,7 @@ def main(args):
     print(f"Num training tokens: {len(data['train'])}")
     print(f"Num validation tokens: {len(data['val'])}")
     
-    model = get_model(args).to(args.device) # todo: take care of initializing the model if args.use_pretrained != 'none'
-
+    model = get_model(args).to(args.device)  # todo: take care of initializing the model if args.use_pretrained != 'none'
     model = distributed_backend.transform_model(model)
     
     group_specs = distributed_backend.get_raw_model(model).get_parameter_group_specs()
@@ -65,13 +64,42 @@ def main(args):
             params += [param_name_mapping[p_name] for p_name in translated_p_names]
         g["params"] = params
         optimized_params_cnt += sum([p.numel() for p in g["params"]])
-    print("number of optimized parameters: %.2fM" % (optimized_params_cnt/1e6,))
+
+    print("number of optimized parameters: %.2fM" % (optimized_params_cnt / 1e6,))
     if args.opt == 'adamw':
         use_fused = (device_type == 'cuda') and ('fused' in inspect.signature(torch.optim.AdamW).parameters)
         print(f"using fused AdamW: {use_fused}")
         extra_args = dict(fused=True) if use_fused else dict()
         opt = torch.optim.AdamW(group_specs, lr=args.lr, betas=(args.beta1, args.beta2),
                                 weight_decay=args.weight_decay, **extra_args)
+    elif args.opt == "lion":
+        """
+        --n_layer=2 --n_head=4 --n_embd=128 --sequence_length=256 --dataset=shakespeare-char --device=cpu --vocab_size=96 --lr=0.00025 --weight_decay=.5 --beta1=.95 --beta2=.98 --opt=lion
+
+        β1=0.95, β2=0.98 
+        
+        https://github.com/lucidrains/lion-pytorch
+        
+        Learning rate and weight decay: the authors write in Section 5 - Based 
+        on our experience, a suitable learning rate for Lion is typically 3-10x 
+        smaller than that for AdamW. Since the effective weight decay is lr * λ, 
+        the value of decoupled weight decay λ used for Lion is 3-10x larger than 
+        that for AdamW in order to maintain a similar strength. The initial value, 
+        peak value, and end value in the learning rate schedule should be changed
+        simultaneously with the same ratio compared to AdamW, evidenced by a researcher.
+
+        β1 and β2: the authors write in Section 5 - The default values for β1 and β2 in 
+        AdamW are set as 0.9 and 0.999, respectively, with an ε of 1e−8, while in Lion, 
+        the default values for β1 and β2 are discovered through the program search process 
+        and set as 0.9 and 0.99, respectively. Similar to how people reduce β2 to 0.99 or 
+        smaller and increase ε to 1e-6 in AdamW to improve stability, using β1=0.95, β2=0.98 
+        in Lion can also be helpful in mitigating instability during training, suggested by 
+        the authors. This was corroborated by a researcher.
+        
+        https://medium.com/@yash9439/lion-optimizer-73d3fd18abe9
+        """
+        import optim.lion_pytorch.lion
+        opt = optim.lion_pytorch.lion.Lion(group_specs, lr=args.lr, weight_decay=args.weight_decay)
     else:
         opt = torch.optim.SGD(group_specs, lr=args.lr, momentum=0.9, weight_decay=args.weight_decay)
     

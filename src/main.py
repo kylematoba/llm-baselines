@@ -20,9 +20,7 @@ import distributed
 def get_args():
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument('--config_format', default='base', choices=config.registered_formats())
-
     args, rem_args = parser.parse_known_args()
-
     return config.parse_args_with_format(format=args.config_format, base_parser=parser, args=rem_args, namespace=args)
 
 
@@ -44,7 +42,7 @@ def main(args):
     
     print(f"Loading dataset '{args.dataset}'")
     
-    data = get_dataset(args) # data is a dict: {'train': train_tokenized, 'val': eval_tokenized}
+    data = get_dataset(args)  # data is a dict: {'train': train_tokenized, 'val': eval_tokenized}
     if args.data_in_ram:
         data = {'train': np.array(data['train']), 'val': np.array(data['val'])}
         
@@ -73,12 +71,11 @@ def main(args):
         opt = torch.optim.AdamW(group_specs, lr=args.lr, betas=(args.beta1, args.beta2),
                                 weight_decay=args.weight_decay, **extra_args)
     elif args.opt == "lion":
-
-        import optim.lion_pytorch.lion
-        opt = optim.lion_pytorch.lion.Lion(group_specs,
-                                           lr=args.lr,
-                                           betas=(args.beta1, args.beta2),
-                                           weight_decay=args.weight_decay)
+        from lion_pytorch import Lion
+        opt = Lion(group_specs,
+                   lr=args.lr,
+                   betas=(args.beta1, args.beta2),
+                   weight_decay=args.weight_decay)
     else:
         opt = torch.optim.SGD(group_specs, lr=args.lr, momentum=0.9, weight_decay=args.weight_decay)
     
@@ -104,7 +101,7 @@ def main(args):
         if distributed_backend.is_master_process():
             os.makedirs(ckpt_path)
         distributed_backend.sync()
-    elif os.path.isfile(os.path.join(ckpt_path, "summary.json")): # the experiment was already completed
+    elif os.path.isfile(os.path.join(ckpt_path, "summary.json")):  # the experiment was already completed
         print(f"Already found experiment '{ckpt_path}'.\nSkipping.")
         sys.exit(0)
 
@@ -149,7 +146,8 @@ def main(args):
 
     print(f"\nTraining model={args.model} \n{vars(args)}\n")
 
-    stats = train(model, opt, data, args.data_seed, scheduler, args.iterations, args.acc_steps, args.batch_size, args.sequence_length, 
+    stats = train(model, opt, data,
+                  args.data_seed, scheduler, args.iterations, args.acc_steps, args.batch_size, args.sequence_length,
                   eval_freq=args.eval_freq, 
                   distributed_backend=distributed_backend,
                   ckpt_path=f"{ckpt_path}/ckpt.pt", itr=itr, rng_state_dict=rng_state_dict, extra_args=args)

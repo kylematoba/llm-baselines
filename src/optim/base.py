@@ -51,8 +51,6 @@ def train_base(model, opt, data, data_seed, scheduler, iterations, acc_steps, ba
 
     stats = {"train_loss": [], "val_loss": [], "val_pp": [], "val_acc": []}
 
-   
-    
     if extra_args.compile:
         print(f"Compiling model ...")
         model = torch.compile(model)  # requires pytorch 2.0+
@@ -61,7 +59,7 @@ def train_base(model, opt, data, data_seed, scheduler, iterations, acc_steps, ba
 
     t0 = time.time()
     
-    if rng_state_dict is not  None:
+    if rng_state_dict is not None:
         torch.set_rng_state(rng_state_dict["cpu_rng_state"])
         torch.cuda.set_rng_state(rng_state_dict["gpu_rng_state"])
         np.random.set_state(rng_state_dict["numpy_rng_state"])

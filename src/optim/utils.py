@@ -1,7 +1,7 @@
+from contextlib import nullcontext, contextmanager, ExitStack
+
 import numpy as np
 import torch
-import torch.nn.functional as F
-from contextlib import nullcontext, contextmanager, ExitStack
 
 
 def get_batch(dataloader, device="cpu"):
@@ -33,7 +33,6 @@ def eval(model, data_val_iter, device='cpu', max_num_batches=24, ctx=nullcontext
     val_acc = torch.stack(acc_list).mean().item()
     val_loss = torch.stack(loss_list_val).mean().item()
     val_perplexity = 2.71828 ** val_loss
-
     return val_acc, val_loss, val_perplexity
 
 

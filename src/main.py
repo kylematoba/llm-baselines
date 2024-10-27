@@ -73,33 +73,12 @@ def main(args):
         opt = torch.optim.AdamW(group_specs, lr=args.lr, betas=(args.beta1, args.beta2),
                                 weight_decay=args.weight_decay, **extra_args)
     elif args.opt == "lion":
-        """
-        --n_layer=2 --n_head=4 --n_embd=128 --sequence_length=256 --dataset=shakespeare-char --device=cpu --vocab_size=96 --lr=0.00025 --weight_decay=.5 --beta1=.95 --beta2=.98 --opt=lion
 
-        β1=0.95, β2=0.98 
-        
-        https://github.com/lucidrains/lion-pytorch
-        
-        Learning rate and weight decay: the authors write in Section 5 - Based 
-        on our experience, a suitable learning rate for Lion is typically 3-10x 
-        smaller than that for AdamW. Since the effective weight decay is lr * λ, 
-        the value of decoupled weight decay λ used for Lion is 3-10x larger than 
-        that for AdamW in order to maintain a similar strength. The initial value, 
-        peak value, and end value in the learning rate schedule should be changed
-        simultaneously with the same ratio compared to AdamW, evidenced by a researcher.
-
-        β1 and β2: the authors write in Section 5 - The default values for β1 and β2 in 
-        AdamW are set as 0.9 and 0.999, respectively, with an ε of 1e−8, while in Lion, 
-        the default values for β1 and β2 are discovered through the program search process 
-        and set as 0.9 and 0.99, respectively. Similar to how people reduce β2 to 0.99 or 
-        smaller and increase ε to 1e-6 in AdamW to improve stability, using β1=0.95, β2=0.98 
-        in Lion can also be helpful in mitigating instability during training, suggested by 
-        the authors. This was corroborated by a researcher.
-        
-        https://medium.com/@yash9439/lion-optimizer-73d3fd18abe9
-        """
         import optim.lion_pytorch.lion
-        opt = optim.lion_pytorch.lion.Lion(group_specs, lr=args.lr, weight_decay=args.weight_decay)
+        opt = optim.lion_pytorch.lion.Lion(group_specs,
+                                           lr=args.lr,
+                                           betas=(args.beta1, args.beta2),
+                                           weight_decay=args.weight_decay)
     else:
         opt = torch.optim.SGD(group_specs, lr=args.lr, momentum=0.9, weight_decay=args.weight_decay)
     
@@ -163,7 +142,7 @@ def main(args):
             scheduler_state_dict = checkpoint['scheduler']
             scheduler.load_state_dict(scheduler_state_dict)
 
-    if args.model in ['base', 'llama2']: # all train functions have the same interface
+    if args.model in ['base', 'llama2']:  # all train functions have the same interface
         train = train_base
     else:
         raise NotImplementedError(f"No training method implemented for model type '{args.model}'.")

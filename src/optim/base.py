@@ -17,7 +17,7 @@ def train_base(model, opt, data, data_seed, scheduler, iterations, acc_steps, ba
     device_type = 'cuda' if 'cuda' in str(extra_args.device) else 'cpu'
     type_ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(
         device_type=device_type, dtype=torch.bfloat16)  # extra_args.dtype)
-    best_val_loss, text_table = float('inf'), None # best_val_loss not used atm, early stopping not recommended but possible 
+    best_val_loss, text_table = float('inf'), None  # best_val_loss not used atm, early stopping not recommended but possible
     substep = itr * acc_steps
     data["train"], train_sampler = get_dataloader(
         data["train"],
@@ -35,7 +35,7 @@ def train_base(model, opt, data, data_seed, scheduler, iterations, acc_steps, ba
     )
 
     num_substeps_per_epoch = len(data["train"])
-    train_epochs = substep//num_substeps_per_epoch
+    train_epochs = substep // num_substeps_per_epoch
     
     if rng_state_dict is not None and  rng_state_dict.get("train_sampler_state", None) is not None:
         train_sampler.generator.set_state(rng_state_dict["train_sampler_state"])
@@ -55,7 +55,7 @@ def train_base(model, opt, data, data_seed, scheduler, iterations, acc_steps, ba
     
     if extra_args.compile:
         print(f"Compiling model ...")
-        model = torch.compile(model) # requires pytorch 2.0+
+        model = torch.compile(model)  # requires pytorch 2.0+
 
     model.train()
 
@@ -69,9 +69,7 @@ def train_base(model, opt, data, data_seed, scheduler, iterations, acc_steps, ba
     for _ in range(substep % num_substeps_per_epoch):
         get_batch(data_train_iter, device=extra_args.device)
 
-    
     while itr < iterations:
-            
         for microstep_idx in range(acc_steps):  # gradient accumulation
             x, y = get_batch(data_train_iter, device=extra_args.device)
             
@@ -92,7 +90,6 @@ def train_base(model, opt, data, data_seed, scheduler, iterations, acc_steps, ba
                 else:
                     sampler_state_before_iter = train_sampler.generator.get_state()
                 data_train_iter = iter(data["train"])
-
 
         if extra_args.grad_clip != 0.0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), extra_args.grad_clip)
@@ -136,8 +133,10 @@ def train_base(model, opt, data, data_seed, scheduler, iterations, acc_steps, ba
                         "val/perplexity": val_perplexity,
                         "val/acc": val_acc,
                         "lr": current_lr,
+                        "time_per_iter": dt*1000/eval_freq,
+                        "memory_allocated_gb": torch.cuda.memory_allocated() / 1024 ** 3,
+                        "max_memory_allocated_gb": torch.cuda.max_memory_allocated() / 1024 ** 3
                     }
-
                     if itr == iterations:
                         logs["val/final-ppl"] = val_perplexity
                         logs["val/final-acc"] = val_acc

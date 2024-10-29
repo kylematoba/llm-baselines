@@ -15,12 +15,12 @@ import distributed
 import wandb
 from data.utils import DataReader, get_dataset
 from models.utils import get_model
-from optim.adammini import Adam_mini
+# from optim.adammini import Adam_mini
 from optim.ademamix import AdEMAMix
 from optim.ademamix2 import AdEMAMix2
 from optim.base import train
 from optim.lion import Lion
-from optim.muon import Muon, zeropower_backends
+# from optim.muon import Muon, zeropower_backends
 from optim.schedulefree import AdamWScheduleFree, SGDScheduleFree
 from optim.sign import Signum
 from optim.soap import SOAP
@@ -178,6 +178,15 @@ def main(args, parser):
             betas=(args.beta1, args.beta2),
             weight_decay=args.weight_decay,
         )
+    elif args.opt == "sophia":
+        pass
+    elif args.opt == "adafactor":
+        # todo(kmatoba): An official Adafactor release is already far along in the pipeline,
+        # https://github.com/pytorch/pytorch/pull/129905
+        # check if this is incorporated, say anytime after January 2025.
+
+        pass
+
     elif args.opt == "sf-adamw":
         opt = AdamWScheduleFree(
             group_specs,
